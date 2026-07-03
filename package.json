@@ -21,7 +21,6 @@
     "cleanup",
     "disk-space",
     "stale",
-    "npkill",
     "cli",
     "disk-usage"
   ],

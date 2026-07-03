@@ -83,12 +83,6 @@ npm unlink -g stale-modules   # undo when you're done
 
 ---
 
-## Why not just use npkill?
-
-[npkill](https://github.com/voidcosmos/npkill) is a solid, more feature-rich tool (custom targets, JSON output, profiles) and worth using too. `stale-modules` is narrower on purpose: it filters straight to projects idle past a threshold you set, and leans on a polished, guided flow rather than a full manual browser of every `node_modules` on disk.
-
----
-
 ## Requirements
 
 - Node.js >= 18
