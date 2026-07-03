@@ -1,6 +1,6 @@
 {
   "name": "stale-modules",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Interactive CLI that finds node_modules folders in projects you haven't touched in a while and lets you reclaim disk space",
   "type": "module",
   "bin": {
