@@ -1,6 +1,11 @@
 # stale-modules
 
+[![CI](https://github.com/danilashk/stale-modules/actions/workflows/ci.yml/badge.svg)](https://github.com/danilashk/stale-modules/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/stale-modules.svg)](https://www.npmjs.com/package/stale-modules)
+
 **Find `node_modules` folders in projects you haven't touched in a while, and reclaim the disk space** — through a fast, friendly interactive CLI.
+
+Works on **macOS, Linux, and Windows**.
 
 Old side-projects quietly hoard gigabytes in `node_modules`. `stale-modules` scans a folder full of projects, finds the ones you haven't worked on in a while, shows you how much space each is wasting, and lets you delete the `node_modules` with a single confirmation. Your source code is never touched — a quick `npm install` brings any project back to life.
 
@@ -86,6 +91,7 @@ npm unlink -g stale-modules   # undo when you're done
 ## Requirements
 
 - Node.js >= 18
+- Works on macOS, Linux, and Windows (verified in CI)
 
 ## License
 
