@@ -68,6 +68,7 @@ async function main() {
       hint: `${formatBytes(proj.sizeBytes)} · inactive ${proj.idleDays}d`,
     })),
     required: false,
+    maxItems: 12,
   });
 
   if (p.isCancel(selected) || selected.length === 0) {
