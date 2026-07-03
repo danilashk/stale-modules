@@ -74,6 +74,18 @@ test('empty base directory yields no results', async () => {
   });
 });
 
+test('ignores .DS_Store so Finder browsing does not mask inactivity', async () => {
+  await withTempDir(async (base) => {
+    // old source, but a brand-new .DS_Store (as if the folder was just opened)
+    const dir = await makeProject(base, 'old-but-browsed', 120, 3);
+    await writeFile(join(dir, '.DS_Store'), 'x'); // fresh mtime (now)
+
+    const results = await scanForStaleModules(base, 30);
+    assert.equal(results.length, 1, 'project must still count as stale');
+    assert.ok(results[0].idleDays >= 119, 'idle must reflect source, not .DS_Store');
+  });
+});
+
 test('skips hidden/dot directories (global installs, caches, tooling)', async () => {
   await withTempDir(async (base) => {
     // a real project + a node_modules buried in a hidden dir (like ~/.npm-global/lib)

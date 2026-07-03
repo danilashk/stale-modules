@@ -2,6 +2,10 @@ import { readdir, stat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.cache', '.turbo']);
+
+// OS-generated metadata files: rewritten just by browsing a folder (Finder,
+// Explorer), so they must NOT count as project activity.
+const IGNORE_ACTIVITY_FILES = new Set(['.DS_Store', 'Thumbs.db', 'desktop.ini']);
 const CONCURRENCY = 8;
 
 async function findCandidateRoots(baseDir) {
@@ -83,6 +87,7 @@ async function getLastActivityMs(rootDir) {
       if (entry.isDirectory()) {
         await walk(fullPath);
       } else {
+        if (IGNORE_ACTIVITY_FILES.has(entry.name)) continue;
         try {
           const s = await stat(fullPath);
           if (s.mtimeMs > latest) latest = s.mtimeMs;
