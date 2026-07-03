@@ -23,6 +23,9 @@ async function findCandidateRoots(baseDir) {
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
       if (SKIP_DIRS.has(entry.name)) continue;
+      // Skip hidden/dot directories (.npm, .npm-global, .cache, .nvm, ...):
+      // these hold global installs, caches and tooling — not projects.
+      if (entry.name.startsWith('.')) continue;
       await walk(join(dir, entry.name));
     }
   }

@@ -61,6 +61,8 @@ Every screen shows its controls, but for reference:
 
 It deliberately does **not** use git commit history. Plenty of people work locally for a long time without committing, so a project's real activity is better reflected by when its files were last touched than by when they were last pushed.
 
+Hidden/dot directories (`.npm`, `.npm-global`, `.cache`, `.nvm`, …) are skipped entirely — they hold global installs, caches, and tooling, not projects, so their `node_modules` are never offered for deletion.
+
 ---
 
 ## Safety

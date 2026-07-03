@@ -73,3 +73,20 @@ test('empty base directory yields no results', async () => {
     assert.equal(results.length, 0);
   });
 });
+
+test('skips hidden/dot directories (global installs, caches, tooling)', async () => {
+  await withTempDir(async (base) => {
+    // a real project + a node_modules buried in a hidden dir (like ~/.npm-global/lib)
+    await makeProject(base, 'real-project', 100, 5);
+    await makeProject(base, '.npm-global/lib', 100, 5);
+
+    const results = await scanForStaleModules(base, 30);
+    const names = results.map((p) => p.name);
+
+    assert.ok(names.includes('real-project'), 'real project must be found');
+    assert.ok(
+      !names.some((n) => n.startsWith('.')),
+      'nothing under a hidden directory should be found',
+    );
+  });
+});
