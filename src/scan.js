@@ -1,9 +1,5 @@
 import { readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-
-const execFileAsync = promisify(execFile);
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.cache', '.turbo']);
 const CONCURRENCY = 8;
@@ -35,10 +31,36 @@ async function findCandidateRoots(baseDir) {
   return roots;
 }
 
-async function getDirSizeKb(dirPath) {
-  const { stdout } = await execFileAsync('du', ['-sk', dirPath]);
-  const kb = parseInt(stdout.split('\t')[0], 10);
-  return Number.isFinite(kb) ? kb : 0;
+async function getDirSizeBytes(dirPath) {
+  let total = 0;
+
+  async function walk(dir) {
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      // Never follow symlinks: avoids double-counting and infinite loops.
+      if (entry.isSymbolicLink()) continue;
+      const fullPath = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        await walk(fullPath);
+      } else if (entry.isFile()) {
+        try {
+          const s = await stat(fullPath);
+          total += s.size;
+        } catch {
+          // file may have vanished mid-scan, ignore
+        }
+      }
+    }
+  }
+
+  await walk(dirPath);
+  return total;
 }
 
 async function getLastActivityMs(rootDir) {
@@ -94,8 +116,8 @@ export async function scanForStaleModules(baseDir, thresholdDays) {
 
   const projects = await runPool(roots, async (rootPath) => {
     const nodeModulesPath = join(rootPath, 'node_modules');
-    const [sizeKb, lastActivityMs] = await Promise.all([
-      getDirSizeKb(nodeModulesPath),
+    const [sizeBytes, lastActivityMs] = await Promise.all([
+      getDirSizeBytes(nodeModulesPath),
       getLastActivityMs(rootPath),
     ]);
 
@@ -105,7 +127,7 @@ export async function scanForStaleModules(baseDir, thresholdDays) {
       name: rootPath.slice(baseDir.length).replace(/^\/+/, '') || rootPath,
       rootPath,
       nodeModulesPath,
-      sizeBytes: sizeKb * 1024,
+      sizeBytes,
       lastActivityMs,
       idleDays,
     };

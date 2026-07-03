@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { rm } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { resolve, basename } from 'node:path';
 import * as p from '@clack/prompts';
 import pc from 'picocolors';
 import { scanForStaleModules } from '../src/scan.js';
@@ -95,7 +95,7 @@ async function main() {
     const itemSpinner = p.spinner();
     itemSpinner.start(`Deleting ${proj.name}`);
     try {
-      if (proj.nodeModulesPath.split('/').pop() !== 'node_modules') {
+      if (basename(proj.nodeModulesPath) !== 'node_modules') {
         throw new Error('Refusing to delete a path that is not node_modules');
       }
       await rm(proj.nodeModulesPath, { recursive: true, force: true });
