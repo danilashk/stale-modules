@@ -1,5 +1,5 @@
 import { readdir, stat } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, relative, sep } from 'node:path';
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.cache', '.turbo']);
 const CONCURRENCY = 8;
@@ -124,7 +124,7 @@ export async function scanForStaleModules(baseDir, thresholdDays) {
     const idleDays = Math.floor((now - lastActivityMs) / (24 * 60 * 60 * 1000));
 
     return {
-      name: rootPath.slice(baseDir.length).replace(/^\/+/, '') || rootPath,
+      name: relative(baseDir, rootPath).split(sep).join('/') || rootPath,
       rootPath,
       nodeModulesPath,
       sizeBytes,
