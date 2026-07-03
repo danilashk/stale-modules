@@ -1,0 +1,45 @@
+{
+  "name": "stale-modules",
+  "version": "0.1.0",
+  "description": "Interactive CLI that finds node_modules folders in projects you haven't touched in a while and lets you reclaim disk space",
+  "type": "module",
+  "bin": {
+    "stale-modules": "./bin/cli.js",
+    "nmclean": "./bin/cli.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "node_modules",
+    "cleanup",
+    "disk-space",
+    "stale",
+    "npkill",
+    "cli",
+    "disk-usage"
+  ],
+  "license": "MIT",
+  "author": "danilashk",
+  "homepage": "https://github.com/danilashk/stale-modules#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danilashk/stale-modules.git"
+  },
+  "bugs": {
+    "url": "https://github.com/danilashk/stale-modules/issues"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.9.1",
+    "picocolors": "^1.1.1"
+  }
+}

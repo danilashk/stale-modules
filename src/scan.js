@@ -1,0 +1,117 @@
+import { readdir, stat } from 'node:fs/promises';
+import { join } from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execFileAsync = promisify(execFile);
+
+const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.cache', '.turbo']);
+const CONCURRENCY = 8;
+
+async function findCandidateRoots(baseDir) {
+  const roots = [];
+
+  async function walk(dir) {
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    const hasNodeModules = entries.some((e) => e.isDirectory() && e.name === 'node_modules');
+    if (hasNodeModules) {
+      roots.push(dir);
+    }
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      if (SKIP_DIRS.has(entry.name)) continue;
+      await walk(join(dir, entry.name));
+    }
+  }
+
+  await walk(baseDir);
+  return roots;
+}
+
+async function getDirSizeKb(dirPath) {
+  const { stdout } = await execFileAsync('du', ['-sk', dirPath]);
+  const kb = parseInt(stdout.split('\t')[0], 10);
+  return Number.isFinite(kb) ? kb : 0;
+}
+
+async function getLastActivityMs(rootDir) {
+  let latest = 0;
+
+  async function walk(dir) {
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      if (SKIP_DIRS.has(entry.name)) continue;
+      const fullPath = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        await walk(fullPath);
+      } else {
+        try {
+          const s = await stat(fullPath);
+          if (s.mtimeMs > latest) latest = s.mtimeMs;
+        } catch {
+          // file may have vanished mid-scan, ignore
+        }
+      }
+    }
+  }
+
+  await walk(rootDir);
+  return latest;
+}
+
+async function runPool(items, worker) {
+  const results = new Array(items.length);
+  let index = 0;
+
+  async function next() {
+    const current = index++;
+    if (current >= items.length) return;
+    results[current] = await worker(items[current]);
+    await next();
+  }
+
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, items.length) }, next));
+  return results;
+}
+
+export async function scanForStaleModules(baseDir, thresholdDays) {
+  const roots = await findCandidateRoots(baseDir);
+  const now = Date.now();
+  const thresholdMs = thresholdDays * 24 * 60 * 60 * 1000;
+
+  const projects = await runPool(roots, async (rootPath) => {
+    const nodeModulesPath = join(rootPath, 'node_modules');
+    const [sizeKb, lastActivityMs] = await Promise.all([
+      getDirSizeKb(nodeModulesPath),
+      getLastActivityMs(rootPath),
+    ]);
+
+    const idleDays = Math.floor((now - lastActivityMs) / (24 * 60 * 60 * 1000));
+
+    return {
+      name: rootPath.slice(baseDir.length).replace(/^\/+/, '') || rootPath,
+      rootPath,
+      nodeModulesPath,
+      sizeBytes: sizeKb * 1024,
+      lastActivityMs,
+      idleDays,
+    };
+  });
+
+  return projects
+    .filter((p) => now - p.lastActivityMs >= thresholdMs)
+    .sort((a, b) => b.sizeBytes - a.sizeBytes);
+}
