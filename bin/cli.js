@@ -125,12 +125,12 @@ async function main() {
 
   // One spinner updated with an [i/N] counter — a line per project would flood
   // the terminal on huge runs, and the counter shows progress isn't stuck.
-  const spinner = p.spinner();
-  spinner.start(`Deleting node_modules (0/${total})`);
+  const deleteSpinner = p.spinner();
+  deleteSpinner.start(`Deleting node_modules (0/${total})`);
 
   for (let i = 0; i < total; i++) {
     const proj = toDelete[i];
-    spinner.message(`Deleting ${proj.name} (${i + 1}/${total}) — freed ${formatBytes(freedBytes)} so far`);
+    deleteSpinner.message(`Deleting ${proj.name} (${i + 1}/${total}) — freed ${formatBytes(freedBytes)} so far`);
     try {
       if (basename(proj.nodeModulesPath) !== 'node_modules') {
         throw new Error('Refusing to delete a path that is not node_modules');
@@ -142,7 +142,7 @@ async function main() {
     }
   }
 
-  spinner.stop(`Freed ${formatBytes(freedBytes)} — ${total - errors}/${total} done${errors ? ` · ${errors} failed` : ''}`);
+  deleteSpinner.stop(`Freed ${formatBytes(freedBytes)} — ${total - errors}/${total} done${errors ? ` · ${errors} failed` : ''}`);
 
   p.outro(`Done — freed ${formatBytes(freedBytes)} across ${toDelete.length - errors} project(s) · ${errors} error(s)`);
 }
