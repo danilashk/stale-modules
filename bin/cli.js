@@ -9,6 +9,10 @@ import { formatBytes } from '../src/format.js';
 const TEXT_HINT = pc.dim('enter to continue · esc to cancel');
 const CONFIRM_HINT = pc.dim('←/→ or y/n · enter to confirm · esc to cancel');
 
+// clack's multiselect re-renders every selected row on submit, so thousands of
+// options freeze the terminal. Above this count we switch to a cheap chooser.
+const MAX_INTERACTIVE = 200;
+
 function parseArgs(argv) {
   const args = { base: null };
   for (let i = 0; i < argv.length; i++) {
@@ -60,23 +64,49 @@ async function main() {
   const totalBytes = projects.reduce((sum, proj) => sum + proj.sizeBytes, 0);
 
   const controlsHint = pc.dim('↑/↓ move · space select · a toggle all · enter confirm · esc cancel');
-  const selected = await p.multiselect({
-    message: `Inactive projects (${projects.length}) — ${formatBytes(totalBytes)} reclaimable\n${controlsHint}`,
-    options: projects.map((proj) => ({
-      value: proj.rootPath,
-      label: proj.name,
-      hint: `${formatBytes(proj.sizeBytes)} · inactive ${proj.idleDays}d`,
-    })),
-    required: false,
-    maxItems: 12,
+  const toOption = (proj) => ({
+    value: proj.rootPath,
+    label: proj.name,
+    hint: `${formatBytes(proj.sizeBytes)} · inactive ${proj.idleDays}d`,
   });
 
-  if (p.isCancel(selected) || selected.length === 0) {
+  // Returns the chosen projects, or null if the user cancelled / picked nothing.
+  const pickFromList = async (list) => {
+    const selected = await p.multiselect({
+      message: `Inactive projects (${list.length}) — ${formatBytes(totalBytes)} reclaimable\n${controlsHint}`,
+      options: list.map(toOption),
+      required: false,
+      maxItems: 12,
+    });
+    if (p.isCancel(selected) || selected.length === 0) return null;
+    const selectedSet = new Set(selected);
+    return list.filter((proj) => selectedSet.has(proj.rootPath));
+  };
+
+  let toDelete;
+  if (projects.length <= MAX_INTERACTIVE) {
+    toDelete = await pickFromList(projects);
+  } else {
+    // Too many to hand-list without freezing clack: offer all-or-largest.
+    const strategy = await p.select({
+      message: `${projects.length} inactive projects — ${formatBytes(totalBytes)} reclaimable.\n${pc.dim('Too many to list one by one.')}`,
+      options: [
+        { value: 'all', label: `Delete node_modules from ALL ${projects.length} (${formatBytes(totalBytes)})` },
+        { value: 'top', label: `Pick from the ${MAX_INTERACTIVE} largest instead` },
+      ],
+    });
+    if (p.isCancel(strategy)) {
+      p.cancel('Cancelled.');
+      return;
+    }
+    toDelete = strategy === 'all' ? projects : await pickFromList(projects.slice(0, MAX_INTERACTIVE));
+  }
+
+  if (!toDelete || toDelete.length === 0) {
     p.cancel('Nothing selected.');
     return;
   }
 
-  const toDelete = projects.filter((proj) => selected.includes(proj.rootPath));
   const freeBytes = toDelete.reduce((sum, proj) => sum + proj.sizeBytes, 0);
 
   const confirmed = await p.confirm({
